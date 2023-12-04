@@ -26,7 +26,7 @@ case class PartNumber(val id: Int, val row: Int, val col: Int) {
 	override
 	def toString = s"PartNumber($id)"
 }
-case class Part(val name: String, val row: Int, val col: Int) {}
+case class Part(val symbol: String, val row: Int, val col: Int) {}
 
 class Row(val columns: Vector[PartNumber | String]) extends Iterable[PartNumber | String] {
 	def iterator: Iterator[PartNumber | String] = columns.iterator
@@ -42,11 +42,11 @@ class Schema(val rows: Vector[Row]) extends Iterable[Row] {
 	override
 	def stringPrefix = "Schema"
 
-	def findAdjacentPartNumbers(row: Int, col: Int) = 
+	def findAdjacentPartNumbers(part: Part) =
 		List(
-			rows.lift(row - 1).map(_.xxx(col)), 
-			rows.lift(row    ).map(_.x_x(col)), 
-			rows.lift(row + 1).map(_.xxx(col)),
+			rows.lift(part.row - 1).map(_.xxx(part.col)),
+			rows.lift(part.row    ).map(_.x_x(part.col)),
+			rows.lift(part.row + 1).map(_.xxx(part.col)),
 		).flatten.flatten.flatten.collect { case a: PartNumber => a }
 
 	def parts =
@@ -58,7 +58,7 @@ class Schema(val rows: Vector[Row]) extends Iterable[Row] {
 		).zipWithIndex
 		.collect {
 			case (v, row) if v.length != 0 => 
-				v.map { case (part, col) => Part(part, row, col) }
+				v.map { case (symbol, col) => Part(symbol, row, col) }
 		}.toList.flatten
 }
 
@@ -67,29 +67,30 @@ object Schema {
 
 	def fromLines(data: Iterable[String]) = 
 		data.zipWithIndex
-			.map { case (l, i) =>
-				tokenizer.findAllIn(l).zipWithIndex.flatMap {
-					case (x, j) if x.head.isDigit => List.fill(x.length)(PartNumber(x.toInt, i, j))
-					case (x, j) => List(x)
+			.map { case (dataLine, row) =>
+				tokenizer.findAllIn(dataLine).zipWithIndex.flatMap {
+					case (token, col) if token.head.isDigit => List.fill(token.length)(PartNumber(token.toInt, row, col))
+					case (token, _) => List(token)
 				}
 				.pipe(x => new Row(x.toVector))
-			}.pipe(x => new Schema(x.toVector))
+			}
+			.pipe(x => new Schema(x.toVector))
 }
 
 def solution1(data: Iterable[String]) =
 	val schema = Schema.fromLines(data)
 	// for each part, find all of the adjacent PartNumbers
-	schema.parts.map(c => schema.findAdjacentPartNumbers(c.row, c.col))
+	schema.parts.map(schema.findAdjacentPartNumbers(_))
 		// merge the lists and avoid counting the same PartNumber twice
 		.flatten.distinct
-		.map(x => x.id)
+		.map(_.id)
 		.sum
 
 
 def solution2(data: Iterable[String]) = 
 	val schema = Schema.fromLines(data)
 	// for each part, find all of the _distinct_ adjacent PartNumbers. 
-	schema.parts.map(c => schema.findAdjacentPartNumbers(c.row, c.col).distinct)
+	schema.parts.map(schema.findAdjacentPartNumbers(_).distinct)
 		// find only the parts with exactly two adjacent PartNumbers
 		.collect { case l if l.length == 2 => l }
 		// get the product of those two adjacent numbers
