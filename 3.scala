@@ -22,19 +22,19 @@ val data1 = Source.fromString(
 
 val data2 = Source.fromFile("3.input").getLines().toList
 
-case class PartNumber(val id: Int, val row: Int, val col: Int) {
+case class PartNumber(id: Int, row: Int, col: Int) {
 	override
 	def toString = s"PartNumber($id)"
 }
-case class Part(val symbol: String, val row: Int, val col: Int) {}
+case class Part(symbol: String, row: Int, col: Int)
 
 class Row(val columns: Vector[PartNumber | String]) extends Iterable[PartNumber | String] {
 	def iterator: Iterator[PartNumber | String] = columns.iterator
 	override
 	def stringPrefix = "Row"
 
-	def xxx(col: Int) = List(columns.lift(col - 1), columns.lift(col), columns.lift(col + 1))
-	def x_x(col: Int) = List(columns.lift(col - 1), columns.lift(col + 1))
+	def xxx(col: Int): Iterable[PartNumber | String] = columns.lift(col - 1) ++ columns.lift(col) ++ columns.lift(col + 1)
+	def x_x(col: Int): Iterable[PartNumber | String] = columns.lift(col - 1) ++ columns.lift(col + 1)
 }
 
 class Schema(val rows: Vector[Row]) extends Iterable[Row] {
@@ -42,12 +42,13 @@ class Schema(val rows: Vector[Row]) extends Iterable[Row] {
 	override
 	def stringPrefix = "Schema"
 
-	def findAdjacentPartNumbers(part: Part) =
-		List(
-			rows.lift(part.row - 1).map(_.xxx(part.col)),
-			rows.lift(part.row    ).map(_.x_x(part.col)),
-			rows.lift(part.row + 1).map(_.xxx(part.col)),
-		).flatten.flatten.flatten.collect { case a: PartNumber => a }
+	def findAdjacentPartNumbers(part: Part): List[PartNumber] =
+		(
+			rows.lift(part.row - 1).map(_.xxx(part.col).collect { case x: PartNumber => x }) ++
+			rows.lift(part.row    ).map(_.x_x(part.col).collect { case x: PartNumber => x }) ++
+			rows.lift(part.row + 1).map(_.xxx(part.col).collect { case x: PartNumber => x })
+		).flatten.toList.distinct
+
 
 	def parts =
 		// Visit every row
@@ -92,9 +93,9 @@ def solution2(data: Iterable[String]) =
 	// for each part, find all of the _distinct_ adjacent PartNumbers. 
 	schema.parts.map(schema.findAdjacentPartNumbers(_).distinct)
 		// find only the parts with exactly two adjacent PartNumbers
-		.collect { case l if l.length == 2 => l }
+		.filter(_.length == 2)
 		// get the product of those two adjacent numbers
-		.map(l => l.foldLeft(1)(_ * _.id))
+		.map(_.map(_.id).product)
 		.sum
 
 
