@@ -88,10 +88,10 @@ def solution1(data: Iterable[String]) =
 		.sum
 
 
-def solution2(data: Iterable[String]) = 
+def solution2(data: Iterable[String]) =
 	val schema = Schema.fromLines(data)
-	// for each part, find all of the _distinct_ adjacent PartNumbers. 
-	schema.parts.map(schema.findAdjacentPartNumbers(_).distinct)
+	// for each * part, find all of the _distinct_ adjacent PartNumbers. 
+	schema.parts.filter(_.symbol == "*").map(schema.findAdjacentPartNumbers(_).distinct)
 		// find only the parts with exactly two adjacent PartNumbers
 		.filter(_.length == 2)
 		// get the product of those two adjacent numbers
