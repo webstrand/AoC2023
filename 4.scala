@@ -4,13 +4,6 @@ import scala.collection.mutable
 
 implicit class Dumpable[A](x: A) {
 	def DUMP[B] = runtime.ScalaRunTime.replStringOf(x, 1000)
-	def pipe2[B](f: (A, A) => B): B = f(x, x)
-}
-
-implicit class IterableExtensions[T](iterable: Iterable[T]) {
-  def sliceFrom(start: Int, length: Int): Iterable[T] = {
-    iterable.drop(start).take(length)
-  }
 }
 
 val data1 = Source.fromString(
@@ -35,7 +28,11 @@ object Card {
 	private val tokenizer = raw"\d+".r
 	private val struct = raw"Card\s+(\d+):([\d ]+)\|([\d ]+)".r
 	def fromString(str: String) = str match {
-		case struct(id, winning, picks) => Card(id.toInt, tokenizer.findAllIn(winning).map(_.toInt).toSet, tokenizer.findAllIn(picks).map(_.toInt).toSet)
+		case struct(id, winning, picks) => Card(
+			id.toInt,
+			tokenizer.findAllIn(winning).map(_.toInt).toSet,
+			tokenizer.findAllIn(picks).map(_.toInt).toSet
+		)
 		case _ => throw Error(s"bad line $str")
 	}
 
@@ -48,13 +45,20 @@ object Deck {
 	def fromLines(lines: Iterable[String]) = Deck(lines.map(Card.fromString(_)).toVector)
 }
 
-def solution1(data: Iterable[String]) = Deck.fromLines(data).cards.map(_.matched.size).map(x => if (x == 0) 0 else 1 << (x - 1)).sum
+def solution1(data: Iterable[String]) =
+	Deck.fromLines(data).cards
+		.map(_.matched.size)
+		.map(x => if (x == 0) 0 else 1 << (x - 1))
+		.sum
 
-def solution2(data: Iterable[String]) = 
+def solution2(data: Iterable[String]) =
 	val cards = Deck.fromLines(data).cards
-	val sums = new mutable.HashMap[Card, Int]()
-	sums ++= cards.map((_ -> 1))
-	cards.foreach((card) => cards.drop(card.id).take(card.matched.size).foreach(target => sums.update(target, sums.apply(target) + sums.apply(card))))
+	val sums = new mutable.HashMap[Card, Int] ++ cards.map((_ -> 1))
+	cards.foreach((card) => cards
+		.drop(card.id)
+		.take(card.matched.size)
+		.foreach(target => sums.update(target, sums.apply(target) + sums.apply(card)))
+	)
 	sums.values.sum
 
 
